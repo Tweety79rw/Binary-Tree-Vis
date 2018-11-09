@@ -1,6 +1,7 @@
 let bTree = new BTree();
 let arr = [];
 let i = 0;
+let current_state = STATES.INSERT;
 function setup() {
   createCanvas(1600,800);
   for(let i = 0; i < 100; i++) {
@@ -13,10 +14,11 @@ function setup() {
 }
 function draw() {
   background(0);
-  if(frameCount %20 == 0 && i < arr.length -1) {
-
+  if(!bTree.isPlaying()) {
+    // current_state = STATES.INSERT_NODE;
     bTree.insert(arr[i]);
     i++;
+
   }
   bTree.show();
 }

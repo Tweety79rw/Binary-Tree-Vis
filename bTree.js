@@ -1,82 +1,137 @@
-function Node(value, x, y) {
-  this.value = value;
-  this.x = x;
-  this.y = y;
-  this.left = null;
-  this.right = null;
-  this.parent = null;
-  this.height = 0;
-  this.step = 1;
-  this.counter = 0;
-  this.leftHeight = function() {
+class Node {
+  constructor(value, x, y) {
+    this.value = value;
+    this.pos= createVector(200, 50);
+    this.vel= createVector();
+    this.acc = createVector();
+    this.targetPos = createVector(x, y);
+    this.left = null;
+    this.right = null;
+    this.parent = null;
+    this.height = 0;
+    this.step = 1;
+    this.counter = 0;
+    this.state = STATES.MOVE;
+    this.maxSpeed = 5;
+    this.maxForce = 3;
+    this.insertable;
+    this.playing = true;
+  }
+  steer() {
+    let desired = p5.Vector.sub(this.targetPos, this.pos);
+    let d = desired.mag();
+    let speed = this.maxSpeed;
+    if(d < 100) {
+      speed = map(d, 0, 100, 0, this.maxSpeed);
+    }
+    desired.setMag(speed);
+    let force = p5.Vector.sub(desired, this.vel);
+
+    force.limit(this.maxForce);
+    this.addForce(force);
+  }
+  addForce(force) {
+    this.acc.add(force);
+    this.vel.add(this.acc);
+    this.pos.add(this.vel);
+    this.acc.mult(0);
+  }
+  update() {
+    this.walk(function(d){
+      if(d.state == STATES.MOVE) {
+        d.steer();
+        if(dist(d.pos.x,d.pos.y,d.targetPos.x,d.targetPos.y) <= 1) {
+          d.playing = false;
+          // d.state = STATES.IN_POS;
+        //  current_state = STATES.INSERT;
+        }
+      }
+    });
+  }
+  leftHeight() {
     return this.left?this.left.height:-1;
   }
-  this.rightHeight = function() {
+  rightHeight() {
     return this.right?this.right.height:-1;
   }
-  this.setLeft = function(node) {
+  setLeft(node) {
     this.left = node;
   }
-  this.setRight = function(node) {
+  setRight(node) {
     this.right = node;
   }
-  this.walk = function(fn) {
+  walk(fn) {
     if(this.left)
       this.left.walk(fn);
-    fn(this.value);
+    fn(this);
     if(this.right)
       this.right.walk(fn);
   }
-  this.insert = function(newNode, node) {
+  static insert(newNode, node) {
     if(!node) {
       node = newNode;
     } else if(newNode.value < node.value) {
       newNode.parent = node;
-      newNode.x = node.x - (50 + (node.height * 20));
-      newNode.y = node.y + 50;
-      node.left = node.insert(newNode, node.left);
+      // newNode.x = node.x - (50 + (node.height * 20));
+      // newNode.y = node.y + 50;
+      node.left = Node.insert(newNode, node.left);
       if(node.leftHeight() - node.rightHeight() == 2) {
         if(newNode.value < node.left.value) {
-          node = node.rotateWithLeftChild(node);
+          node = Node.rotateWithLeftChild(node);
         } else {
-          node = node.doubleWithLeftChild(node);
+          node = Node.doubleWithLeftChild(node);
         }
       }
     } else if(newNode.value > node.value) {
       newNode.parent = node;
-      newNode.x = node.x + (50 + (node.height * 20));
-      newNode.y = node.y + 50;
-      node.right = node.insert(newNode, node.right);
+      // newNode.x = node.x + (50 + (node.height * 20));
+      // newNode.y = node.y + 50;
+      node.right = Node.insert(newNode, node.right);
       if(node.rightHeight() - node.leftHeight() == 2) {
         if(newNode.value > node.right.value) {
-          node = node.rotateWithRightChild(node);
+          node = Node.rotateWithRightChild(node);
         } else {
-          node = node.doubleWithRightChild(node);
+          node = Node.doubleWithRightChild(node);
+
         }
       }
     }
     node.height = Math.max(node.leftHeight(), node.rightHeight()) + 1;
-
+    node.recalcChildCoords();
     return node;
-  };
-
-  this.show = function(x, y) {
-    this.x = x;
-    this.y = y;
-    if(this.left)
-      this.left.show(this.x - (50 + (this.height * 20)), this.y + 50);
-    if(this.counter >= 60) {
-      this.step++;
-      this.counter = 0;
-    }
-    this.render();
-    if(this.step < 4) {
-      this.counter++;
-    }
-    if(this.right)
-      this.right.show(this.x + (50 + (this.height * 20)), this.y + 50);
   }
-  this.search = function(val) {
+  recalcChildCoords() {
+    if(this.left) {
+      this.left.targetPos.x = this.targetPos.x - (50 + (this.height * 20));
+      this.left.targetPos.y = this.targetPos.y + 50;
+      this.left.recalcChildCoords();
+    }
+    if(this.right) {
+      this.right.targetPos.x = this.targetPos.x + (50 + (this.height * 20));
+      this.right.targetPos.y = this.targetPos.y + 50;
+      this.right.recalcChildCoords();
+    }
+  }
+  show(x, y) {
+    this.walk(function(d) {
+      d.render();
+    });
+    // this.x = x;
+    // this.y = y;
+    // if(this.left)
+    //   this.left.show(this.x - (50 + (this.height * 20)), this.y + 50);
+    // if(this.counter >= 60) {
+    //   this.step++;
+    //   this.counter = 0;
+    // }
+    // this.render();
+    // if(this.step < 4) {
+    //   this.counter++;
+    // }
+    // if(this.right)
+    //   this.right.show(this.x + (50 + (this.height * 20)), this.y + 50);
+  }
+  search(val) {
     if(this.value == val)
       return this;
     if(this.value > val)
@@ -85,22 +140,31 @@ function Node(value, x, y) {
       return this.right.search(val);
     return null;
   }
-  this.render = function() {
+  isPlaying() {
+    let playing = false;
+    if(this.left)
+      playing |= this.left.isPlaying();
+    playing |= this.playing;
+    if(this.right)
+      playing |= this.right.isPlaying();
+    return playing;
+  }
+  render() {
     stroke(255);
     noFill();
-    if(this.step >= 1){
-      ellipse(this.x, this.y, 25);
+    // if(this.step >= 1){
+      ellipse(this.pos.x, this.pos.y, 25);
       textAlign(CENTER);
-      text(this.value, this.x, this.y);
-    }
-    if(this.step >= 2) {
+      text(this.value, this.pos.x, this.pos.y);
+    // }
+    // if(this.step >= 2) {
       if(this.parent) {
-        let x = this.x > this.parent.x?-12.5:12.5;
-        line(this.x + x,this.y - 12.5,this.parent.x - x, this.parent.y + 12.5);
+        let x = this.pos.x > this.parent.pos.x?-12.5:12.5;
+        line(this.pos.x + x,this.pos.y - 12.5,this.parent.pos.x - x, this.parent.pos.y + 12.5);
       }
-    }
+    // }
   }
-  this.renderReverse = function() {
+  renderReverse() {
     stroke(255);
     noFill();
     if(this.left)
@@ -115,82 +179,82 @@ function Node(value, x, y) {
     if(this.right)
       this.right.renderReverse();
   }
-  this.rotateWithLeftChild = function(node) {
+  swapCoords(node) {
+    let x = this.targetPos.x;
+    let y = this.targetPos.y;
+    this.targetPos.x = node.targetPos.x;
+    this.targetPos.y = node.targetPos.y;
+    node.targetPos.x = x;
+    node.targetPos.y = y;
+  }
+  static rotateWithLeftChild(node) {
     let leftChild = node.left;
+
     leftChild.parent = node.parent;
     node.left = leftChild.right;
-    if(node.left != null)
-      node.left.parent = node;
     leftChild.right = node;
     node.parent = leftChild;
     node.height = Math.max(node.leftHeight(), node.rightHeight()) + 1;
     leftChild.height = Math.max(leftChild.leftHeight(), node.height) + 1;
+    leftChild.swapCoords(node);
+    if(node.left) {
+      node.left.parent = node;
+      node.left.targetPos.x = node.targetPos.x - (50 + (node.height * 20));
+    }
     return leftChild;
-    // let leftChild = node.left;
-    // //node.left.parent = node.parent;
-    // //node.parent = node.left;
-    // node.left = leftChild.right;
-    // if(node.left)
-    //   node.left.parent = node;
-    // leftChild.right = node;
-    // node.height = Math.max(node.leftHeight(), node.rightHeight()) + 1;
-    // leftChild.height = Math.max(leftChild.leftHeight(), node.height) + 1;
-    // return leftChild;
   }
-  this.rotateWithRightChild = function(node) {
+  static rotateWithRightChild(node) {
     let rightChild = node.right;
+
     rightChild.parent = node.parent;
     node.right = rightChild.left;
-    if(node.right)
-      node.right.parent = node;
     rightChild.left = node;
     node.parent = rightChild;
     node.height = Math.max(node.leftHeight(), node.rightHeight()) + 1;
     rightChild.height = Math.max(rightChild.rightHeight(), node.height) + 1;
+    rightChild.swapCoords(node);
+    if(node.right) {
+      node.right.parent = node;
+      node.right.targetPos.x = node.targetPos.x + (50 + (node.height * 20));
+    }
     return rightChild;
-    //node.right.parent = node.parent;
-    //node.parent = node.right;
-    // node.right = rightChild.left;
-    // if(node.right)
-    //   node.right.parent = node;
-    // node.parent.left = node;
-    // node.height = Math.max(node.leftHeight(), node.rightHeight()) + 1;
-    // node.parent.height = Math.max(node.parent.rightHeight(), node.height) + 1;
-    // return node.parent;
   }
-  this.doubleWithLeftChild = function(node) {
-    node.left = node.left.rotateWithRightChild(node.left);
+  static doubleWithLeftChild(node) {
+    node.left = Node.rotateWithRightChild(node.left);
     node.left.parent = node;
-    return node.rotateWithLeftChild(node);
+    return Node.rotateWithLeftChild(node);
   }
-  this.doubleWithRightChild = function(node) {
-    node.right = node.right.rotateWithLeftChild(node.right);
+  static doubleWithRightChild(node) {
+    node.right = Node.rotateWithLeftChild(node.right);
     node.right.parent = node;
-    return node.rotateWithRightChild(node);
+    return Node.rotateWithRightChild(node);
   }
 }
 
-function BTree() {
-  this.root = null;
-  this.insert = function(value, node) {
-    if(!node) {
-      let newNode = new Node(value,width/2,50);
-      if(!this.root)
-        this.root = newNode;
-      else
-        this.insert(newNode, this.root);
-    } else {
-      this.root = this.root.insert(value, this.root);
-    }
+class BTree {
+  constructor() {
+    this.root = null;
+  }
+  insert(value) {
+    let newNode = new Node(value,width/2,50);
+    this.root = Node.insert(newNode, this.root);
   };
-  this.show = function() {
+  show() {
+
+    if(this.root){
+      this.root.update();
+      this.root.show();
+    }
+  }
+  print() {
+    this.root.walk(function(d) { console.log(d.value);});
+  }
+  isPlaying() {
     if(this.root)
-      this.root.show(width/2,50);
+      return this.root.isPlaying();
+    return false;
   }
-  this.print = function() {
-    this.root.walk(function(d) { console.log(d);});
-  }
-  this.search = function(val, callback) {
+  search(val, callback) {
     let node = this.root.search(val);
     if(callback)
       callback(node);
